@@ -16,3 +16,8 @@ Ideas:
 - Buzzers
 - Wires
 - Perf Board
+
+Task List
+ - [X] Work on CAD
+ - [ ] Preliminary Code
+ - [ ] 
