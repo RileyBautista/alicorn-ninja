@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit Ninja</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+            cursor: crosshair;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .fruit {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            user-select: none;
+            z-index: 10;
+        }
+
+        .fruit:hover {
+            transform: scale(1.1);
+        }
+
+        .apple {
+            background: radial-gradient(circle at 30% 30%, #ff6b6b, #d63031);
+            box-shadow: 0 4px 8px rgba(214, 48, 49, 0.3);
+        }
+
+        .orange {
+            background: radial-gradient(circle at 30% 30%, #fd79a8, #e84393);
+            box-shadow: 0 4px 8px rgba(232, 67, 147, 0.3);
+        }
+
+        .banana {
+            background: radial-gradient(circle at 30% 30%, #fdcb6e, #e17055);
+            box-shadow: 0 4px 8px rgba(225, 112, 85, 0.3);
+            border-radius: 30px;
+        }
+
+        .watermelon {
+            background: radial-gradient(circle at 30% 30%, #00b894, #00a085);
+            box-shadow: 0 4px 8px rgba(0, 160, 133, 0.3);
+        }
+
+        .bomb {
+            background: radial-gradient(circle at 30% 30%, #2d3436, #636e72);
+            box-shadow: 0 4px 8px rgba(45, 52, 54, 0.5);
+            border: 2px solid #e17055;
+            animation: bombPulse 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes bombPulse {
+            0% {
+                box-shadow: 0 4px 8px rgba(45, 52, 54, 0.5), 0 0 0 0 rgba(225, 112, 85, 0.7);
+            }
+            100% {
+                box-shadow: 0 4px 8px rgba(45, 52, 54, 0.5), 0 0 0 10px rgba(225, 112, 85, 0);
+            }
+        }
+
+        .explosion {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff6b35 0%, #f7931e 30%, #ffcb05 60%, transparent 100%);
+            pointer-events: none;
+            animation: explode 0.8s ease-out forwards;
+            z-index: 50;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(8);
+                opacity: 0;
+            }
+        }
+
+        .fruit.blown {
+            animation: blowAway 1s ease-out forwards;
+        }
+
+        @keyframes blowAway {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.3) translateX(var(--blow-x)) translateY(var(--blow-y));
+                opacity: 0;
+            }
+        }
+
+        .splash {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .splash-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        @keyframes splashFade {
+            0% {
+                transform: scale(1);
+                opacity: 0.9;
+            }
+            100% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+        }
+
+        @keyframes particleSplash {
+            0% {
+                transform: scale(1) translate(0, 0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.5) translate(var(--particle-x), var(--particle-y));
+                opacity: 0;
+            }
+        }
+
+        .sliced {
+            animation: slice 0.5s ease-out forwards;
+        }
+
+        @keyframes slice {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2) rotate(180deg);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(0.8) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .fruit-half {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+        }
+
+        @keyframes fallLeft {
+            0% {
+                transform: translateX(0) translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(-50px) translateY(200px) rotate(-45deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes fallRight {
+            0% {
+                transform: translateX(0) translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(50px) translateY(200px) rotate(45deg);
+                opacity: 0;
+            }
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            transition: all 0.5s ease;
+        }
+
+        #score.game-over {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+        }
+
+        #streak {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            color: #ffcb05;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+
+        #streak.visible {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        #streak.game-over {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) translateY(60px);
+            font-size: 28px;
+            opacity: 1;
+        }
+
+        #timer {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 64px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        #timer.visible {
+            opacity: 1;
+        }
+
+        #timer.warning {
+            color: #ff6b6b;
+            animation: timerPulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes timerPulse {
+            0% {
+                transform: translateX(-50%) scale(1);
+            }
+            100% {
+                transform: translateX(-50%) scale(1.1);
+            }
+        }
+
+        .streak-bonus {
+            position: absolute;
+            color: #ffcb05;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+            z-index: 20;
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-50px) scale(1.2);
+            }
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        #gameTitle {
+            font-size: 72px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+            margin-bottom: 50px;
+            text-align: center;
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            0% {
+                text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 255, 255, 0.3);
+            }
+            100% {
+                text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        #startFruit {
+            position: relative;
+            cursor: crosshair;
+            animation: floatFruit 3s ease-in-out infinite;
+        }
+
+        @keyframes floatFruit {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        #startInstructions {
+            color: white;
+            font-size: 24px;
+            margin-top: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            animation: instructionsPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes instructionsPulse {
+            0%, 100% {
+                opacity: 0.8;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        #gameOver h2 {
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        #gameOver button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #gameOver button:hover {
+            background: #d63031;
+        }
+
+        .trail {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            pointer-events: none;
+            animation: trailFade 0.3s ease-out forwards;
+            border-radius: 2px;
+        }
+
+        @keyframes trailFade {
+            0% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
+        #endFruit {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) translateY(100px);
+            cursor: crosshair;
+            opacity: 0;
+            transition: all 1s ease;
+            z-index: 1001;
+        }
+
+        #endFruit.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) translateY(50px);
+        }
+
+        #endFruit .fruit {
+            animation: endFruitFloat 2s ease-in-out infinite;
+        }
+
+        @keyframes endFruitFloat {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-15px) rotate(5deg);
+            }
+        }
+
+        #endInstructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) translateY(150px);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            opacity: 0;
+            transition: all 1s ease 0.5s;
+            z-index: 1001;
+        }
+
+        #endInstructions.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) translateY(120px);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="startScreen">
+            <div id="gameTitle">FRUIT NINJA</div>
+            <div id="startFruit"></div>
+            <div id="startInstructions">Slice to start!</div>
+        </div>
+        <div id="score">Score: 0</div>
+        <div id="streak"></div>
+        <div id="timer">0:45</div>
+        <div id="gameOver">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <button onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        class FruitNinja {
+            constructor() {
+                this.gameContainer = document.getElementById('gameContainer');
+                this.scoreElement = document.getElementById('score');
+                this.streakElement = document.getElementById('streak');
+                this.timerElement = document.getElementById('timer');
+                this.gameOverElement = document.getElementById('gameOver');
+                this.finalScoreElement = document.getElementById('finalScore');
+                this.startScreen = document.getElementById('startScreen');
+                this.startFruitElement = document.getElementById('startFruit');
+                
+                this.score = 0;
+                this.streak = 0;
+                this.maxStreak = 0;
+                this.gameRunning = false;
+                this.gameStarted = false;
+                this.gameEnding = false;
+                this.fruits = [];
+                this.fruitTypes = ['apple', 'orange', 'banana', 'watermelon'];
+                this.spawnRate = 1200;
+                this.gravity = 0.2;
+                this.maxFruits = 100;
+                this.groupSpawnChance = 0.8;
+                this.bombSpawnChance = 0.08;
+                this.lastSpawnTime = 0;
+                
+                this.gameTime = 45;
+                this.timeLeft = this.gameTime;
+                this.timerInterval = null;
+                
+                this.lastMouseX = 0;
+                this.lastMouseY = 0;
+                
+                this.aimAssistSnapChance = 0.8;
+                this.bombHitChance = 0.33;
+                this.magneticRange = 80;
+                this.magneticStrength = 0.3;
+                this.comboCount = 0;
+                
+                this.initSwipeChannel();
+                
+                this.showStartScreen();
+            }
+
+            initSwipeChannel() {
+                this.swipeChannel = new BroadcastChannel("swipeChannel");
+                this.swipeChannel.onmessage = (e) => {
+                    this.initiateSwipeFrom(e.data.angle, e.data.intensity);
+                }
+            }
+
+            initiateSwipeFrom(angle, intensity) {
+                const randomOffset = (Math.random() - 0.5) * 5;
+                angle += randomOffset;
+                
+                angle = ((angle % 360) + 360) % 360;
+                
+                intensity = Math.max(0, Math.min(1, intensity));
+                
+                const adjustedAngle = 0 - angle;
+                const angleRad = (adjustedAngle * Math.PI) / 180;
+                
+                let startX, startY, endX, endY;
+                let targetFruit = null;
+                
+                if (!this.gameStarted && this.startFruit && !this.startFruit.sliced) {
+                    const centerX = window.innerWidth / 2;
+                    const centerY = window.innerHeight / 2;
+                    const swipeDistance = 300;
+                    
+                    startX = centerX - Math.cos(angleRad) * (swipeDistance / 2);
+                    startY = centerY - Math.sin(angleRad) * (swipeDistance / 2);
+                    endX = centerX + Math.cos(angleRad) * (swipeDistance / 2);
+                    endY = centerY + Math.sin(angleRad) * (swipeDistance / 2);
+                    
+                    this.animateFastSwipe(startX, startY, endX, endY);
+                } else if (this.gameRunning) {
+                    const centerX = window.innerWidth / 2;
+                    const centerY = window.innerHeight / 2;
+                    const maxSwipeDistance = Math.min(window.innerWidth, window.innerHeight) * 1.2;
+                    const swipeDistance = maxSwipeDistance * intensity;
+                    
+                    const nearbyFruits = this.fruits.filter(fruit => 
+                        !fruit.sliced && !fruit.isBomb && this.getFruitDistance(fruit, centerX, centerY) < 400
+                    );
+                    const nearbyBombs = this.fruits.filter(fruit => 
+                        !fruit.sliced && fruit.isBomb && this.getFruitDistance(fruit, centerX, centerY) < 400
+                    );
+                    
+                    if (nearbyFruits.length > 0 || nearbyBombs.length > 0) {
+                        let referenceFruit;
+                        let shouldHitTarget = Math.random() < this.aimAssistSnapChance;
+                        
+                        if (shouldHitTarget) {
+                            let shouldTargetBomb = nearbyBombs.length > 0 && Math.random() < this.bombHitChance;
+                            
+                            if (shouldTargetBomb) {
+                                targetFruit = this.selectBestFruit(nearbyBombs, angleRad, centerX, centerY);
+                                referenceFruit = targetFruit || nearbyBombs[Math.floor(Math.random() * nearbyBombs.length)];
+                                console.log(`Aim assist: Targeting bomb!`);
+                            } else if (nearbyFruits.length > 0) {
+                                targetFruit = this.selectBestFruit(nearbyFruits, angleRad, centerX, centerY);
+                                referenceFruit = targetFruit || nearbyFruits[Math.floor(Math.random() * nearbyFruits.length)];
+                            } else {
+                                targetFruit = this.selectBestFruit(nearbyBombs, angleRad, centerX, centerY);
+                                referenceFruit = targetFruit || nearbyBombs[Math.floor(Math.random() * nearbyBombs.length)];
+                                console.log(`Aim assist: Only bombs available, targeting bomb!`);
+                            }
+                            
+                            if (targetFruit) {
+                                const targetRect = targetFruit.getBoundingClientRect();
+                                const targetX = targetRect.left + targetRect.width / 2;
+                                const targetY = targetRect.top + targetRect.height / 2;
+                                
+                                const targetDistance = 60;
+                                startX = targetX - Math.cos(angleRad) * targetDistance;
+                                startY = targetY - Math.sin(angleRad) * targetDistance;
+                                endX = targetX + Math.cos(angleRad) * (swipeDistance - targetDistance);
+                                endY = targetY + Math.sin(angleRad) * (swipeDistance - targetDistance);
+                                
+                                if (targetFruit.isBomb) {
+                                    console.log(`Aim assist: Snapped to bomb`);
+                                } else {
+                                    console.log(`Aim assist: Snapped to ${targetFruit.type} fruit`);
+                                }
+                            }
+                        } else {
+                            const allNearbyTargets = [...nearbyFruits, ...nearbyBombs];
+                            referenceFruit = allNearbyTargets[Math.floor(Math.random() * allNearbyTargets.length)];
+                            const refRect = referenceFruit.getBoundingClientRect();
+                            const refX = refRect.left + refRect.width / 2;
+                            const refY = refRect.top + refRect.height / 2;
+                            
+                            const startDistance = 40 + Math.random() * 30;
+                            const startOffsetAngle = (Math.random() - 0.5) * Math.PI;
+                            
+                            startX = refX + Math.cos(startOffsetAngle) * startDistance;
+                            startY = refY + Math.sin(startOffsetAngle) * startDistance;
+                            
+                            const tempEndX = startX + Math.cos(angleRad) * swipeDistance;
+                            const tempEndY = startY + Math.sin(angleRad) * swipeDistance;
+                            
+                            const wouldHit = this.lineCircleIntersection(startX, startY, tempEndX, tempEndY, refX, refY, 30);
+                            if (wouldHit) {
+                                const adjustAngle = (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.4);
+                                const adjustedAngleRad = angleRad + adjustAngle;
+                                endX = startX + Math.cos(adjustedAngleRad) * swipeDistance;
+                                endY = startY + Math.sin(adjustedAngleRad) * swipeDistance;
+                            } else {
+                                endX = tempEndX;
+                                endY = tempEndY;
+                            }
+                            
+                            const targetType = referenceFruit.isBomb ? 'bomb' : `${referenceFruit.type} fruit`;
+                            console.log(`Aim assist: Intentional miss starting near ${targetType}`);
+                        }
+                    } else {
+                        const randomRadius = 100 + Math.random() * 100;
+                        const randomAngle = Math.random() * Math.PI * 2;
+                        startX = centerX + Math.cos(randomAngle) * randomRadius;
+                        startY = centerY + Math.sin(randomAngle) * randomRadius;
+                        
+                        startX = Math.max(50, Math.min(window.innerWidth - 50, startX));
+                        startY = Math.max(50, Math.min(window.innerHeight - 50, startY));
+                        
+                        endX = startX + Math.cos(angleRad) * swipeDistance;
+                        endY = startY + Math.sin(angleRad) * swipeDistance;
+                        
+                        console.log(`No fruits or bombs nearby, random start position`);
+                    }
+                    
+                    this.animateFastSwipeWithMagnetism(startX, startY, endX, endY, targetFruit);
+                }
+            }
+
+            getFruitDistance(fruit, x, y) {
+                const rect = fruit.getBoundingClientRect();
+                const fruitX = rect.left + rect.width / 2;
+                const fruitY = rect.top + rect.height / 2;
+                return Math.sqrt(Math.pow(fruitX - x, 2) + Math.pow(fruitY - y, 2));
+            }
+
+            selectBestFruit(fruits, angleRad, centerX, centerY) {
+                let bestFruit = null;
+                let bestScore = -1;
+                
+                fruits.forEach(fruit => {
+                    const rect = fruit.getBoundingClientRect();
+                    const fruitX = rect.left + rect.width / 2;
+                    const fruitY = rect.top + rect.height / 2;
+                    
+                    const toFruitX = fruitX - centerX;
+                    const toFruitY = fruitY - centerY;
+                    
+                    const swipeX = Math.cos(angleRad);
+                    const swipeY = Math.sin(angleRad);
+                    
+                    const dotProduct = toFruitX * swipeX + toFruitY * swipeY;
+                    
+                    const distance = this.getFruitDistance(fruit, centerX, centerY);
+                    const distanceScore = 1 / (1 + distance / 200);
+                    
+                    const score = Math.max(0, dotProduct) * distanceScore;
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestFruit = fruit;
+                    }
+                });
+                
+                return bestFruit;
+            }
+
+            animateFastSwipeWithMagnetism(startX, startY, endX, endY, targetFruit) {
+                const steps = 15;
+                const stepDuration = 8;
+                let currentStep = 0;
+                
+                const stepX = (endX - startX) / steps;
+                const stepY = (endY - startY) / steps;
+                
+                this.comboCount = 0;
+                
+                const animateStep = () => {
+                    if (currentStep >= steps) {
+                        if (this.comboCount > 1) {
+                            console.log(`Combo: ${this.comboCount} fruits in one swipe!`);
+                        }
+                        return;
+                    }
+                    
+                    let currentX = startX + (stepX * currentStep);
+                    let currentY = startY + (stepY * currentStep);
+                    let nextX = startX + (stepX * (currentStep + 1));
+                    let nextY = startY + (stepY * (currentStep + 1));
+                    
+                    const magneticResult = this.applyMagneticEffect(currentX, currentY, nextX, nextY);
+                    nextX = magneticResult.nextX;
+                    nextY = magneticResult.nextY;
+                    
+                    this.checkSliceCollisions(currentX, currentY, nextX, nextY);
+                    this.createContinuousLine(currentX, currentY, nextX, nextY);
+                    
+                    currentStep++;
+                    setTimeout(animateStep, stepDuration);
+                };
+                
+                animateStep();
+            }
+
+            applyMagneticEffect(currentX, currentY, nextX, nextY) {
+                const nearbyFruits = this.fruits.filter(fruit => {
+                    if (fruit.sliced || fruit.isBomb) return false;
+                    
+                    const rect = fruit.getBoundingClientRect();
+                    const fruitX = rect.left + rect.width / 2;
+                    const fruitY = rect.top + rect.height / 2;
+                    
+                    const distanceToLine = this.pointToLineDistance(fruitX, fruitY, currentX, currentY, nextX, nextY);
+                    return distanceToLine <= this.magneticRange;
+                });
+                
+                if (nearbyFruits.length === 0) {
+                    return { nextX, nextY };
+                }
+                
+                let closestFruit = null;
+                let closestDistance = Infinity;
+                
+                nearbyFruits.forEach(fruit => {
+                    const rect = fruit.getBoundingClientRect();
+                    const fruitX = rect.left + rect.width / 2;
+                    const fruitY = rect.top + rect.height / 2;
+                    const distance = Math.sqrt(Math.pow(fruitX - currentX, 2) + Math.pow(fruitY - currentY, 2));
+                    
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestFruit = fruit;
+                    }
+                });
+                
+                if (closestFruit && closestDistance <= this.magneticRange) {
+                    const rect = closestFruit.getBoundingClientRect();
+                    const fruitX = rect.left + rect.width / 2;
+                    const fruitY = rect.top + rect.height / 2;
+                    
+                    const pullX = (fruitX - nextX) * this.magneticStrength;
+                    const pullY = (fruitY - nextY) * this.magneticStrength;
+                    
+                    console.log(`Magnetic pull toward ${closestFruit.type} fruit (distance: ${Math.round(closestDistance)}px)`);
+                    
+                    return {
+                        nextX: nextX + pullX,
+                        nextY: nextY + pullY
+                    };
+                }
+                
+                return { nextX, nextY };
+            }
+
+            pointToLineDistance(px, py, x1, y1, x2, y2) {
+                const A = px - x1;
+                const B = py - y1;
+                const C = x2 - x1;
+                const D = y2 - y1;
+                
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                
+                if (lenSq === 0) return Math.sqrt(A * A + B * B);
+                
+                const param = dot / lenSq;
+                
+                let xx, yy;
+                if (param < 0) {
+                    xx = x1;
+                    yy = y1;
+                } else if (param > 1) {
+                    xx = x2;
+                    yy = y2;
+                } else {
+                    xx = x1 + param * C;
+                    yy = y1 + param * D;
+                }
+                
+                const dx = px - xx;
+                const dy = py - yy;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            animateFastSwipe(startX, startY, endX, endY) {
+                const steps = 15;
+                const stepDuration = 8;
+                let currentStep = 0;
+                
+                const stepX = (endX - startX) / steps;
+                const stepY = (endY - startY) / steps;
+                
+                const animateStep = () => {
+                    if (currentStep >= steps) return;
+                    
+                    const currentX = startX + (stepX * currentStep);
+                    const currentY = startY + (stepY * currentStep);
+                    const nextX = startX + (stepX * (currentStep + 1));
+                    const nextY = startY + (stepY * (currentStep + 1));
+                    
+                    this.checkSliceCollisions(currentX, currentY, nextX, nextY);
+                    
+                    this.createContinuousLine(currentX, currentY, nextX, nextY);
+                    
+                    currentStep++;
+                    setTimeout(animateStep, stepDuration);
+                };
+                
+                animateStep();
+            }
+
+            animateSwipe(startX, startY, endX, endY) {
+                const steps = 20;
+                const stepDuration = 20;
+                let currentStep = 0;
+                
+                const stepX = (endX - startX) / steps;
+                const stepY = (endY - startY) / steps;
+                
+                const animateStep = () => {
+                    if (currentStep >= steps) return;
+                    
+                    const currentX = startX + (stepX * currentStep);
+                    const currentY = startY + (stepY * currentStep);
+                    const nextX = startX + (stepX * (currentStep + 1));
+                    const nextY = startY + (stepY * (currentStep + 1));
+                    
+                    this.checkSliceCollisions(currentX, currentY, nextX, nextY);
+                    
+                    this.createContinuousLine(currentX, currentY, nextX, nextY);
+                    
+                    currentStep++;
+                    setTimeout(animateStep, stepDuration);
+                };
+                
+                animateStep();
+            }
+
+            init() {
+                this.spawnFruit();
+                this.gameLoop();
+                this.setupMouseControls();
+                
+                this.spawnInterval = setInterval(() => {
+                    if (this.gameRunning) {
+                        this.handleFruitSpawning();
+                    }
+                }, this.spawnRate);
+
+                this.difficultyInterval = setInterval(() => {
+                    if (this.gameRunning && this.spawnRate > 600) {
+                        this.spawnRate -= 80;
+                        this.maxFruits = Math.min(this.maxFruits + 1, 100);
+                        clearInterval(this.spawnInterval);
+                        this.spawnInterval = setInterval(() => {
+                            if (this.gameRunning) {
+                                this.handleFruitSpawning();
+                            }
+                        }, this.spawnRate);
+                    }
+                }, 8000);
+            }
+
+            handleFruitSpawning() {
+                if (this.gameEnding || this.fruits.length >= this.maxFruits) return;
+                
+                if (Math.random() < this.bombSpawnChance) {
+                    this.spawnBomb();
+                    return;
+                }
+                
+                if (Math.random() < this.groupSpawnChance) {
+                    this.spawnFruitGroup();
+                } else {
+                    this.spawnFruit();
+                }
+            }
+
+            spawnFruit() {
+                const fruit = document.createElement('div');
+                const fruitType = this.fruitTypes[Math.floor(Math.random() * this.fruitTypes.length)];
+                
+                fruit.className = `fruit ${fruitType}`;
+                fruit.style.left = Math.random() * (window.innerWidth - 60) + 'px';
+                fruit.style.bottom = '-60px';
+                
+                fruit.velocityY = -(Math.random() * 8 + 12);
+                fruit.velocityX = (Math.random() - 0.5) * 4;
+                fruit.sliced = false;
+                fruit.type = fruitType;
+                
+                this.gameContainer.appendChild(fruit);
+                this.fruits.push(fruit);
+            }
+
+            spawnFruitGroup() {
+                const groupSize = Math.floor(Math.random() * 3) + 2;
+                const baseX = Math.random() * (window.innerWidth - 200) + 100;
+                const groupPattern = Math.random();
+                
+                for (let i = 0; i < groupSize && this.fruits.length < this.maxFruits; i++) {
+                    setTimeout(() => {
+                        if (this.gameRunning && this.fruits.length < this.maxFruits) {
+                            let spawnX;
+                            
+                            if (groupPattern < 0.33) {
+                                spawnX = baseX + (i * 80);
+                            } else if (groupPattern < 0.66) {
+                                const angle = (i / (groupSize - 1)) * Math.PI * 0.5 - Math.PI * 0.25;
+                                spawnX = baseX + Math.cos(angle) * 100;
+                            } else {
+                                spawnX = baseX + (Math.random() - 0.5) * 150;
+                            }
+                            
+                            spawnX = Math.max(0, Math.min(window.innerWidth - 60, spawnX));
+                            
+                            this.spawnFruitAt(spawnX);
+                        }
+                    }, i * 150);
+                }
+            }
+
+            spawnFruitAt(x) {
+                const fruit = document.createElement('div');
+                const fruitType = this.fruitTypes[Math.floor(Math.random() * this.fruitTypes.length)];
+                
+                fruit.className = `fruit ${fruitType}`;
+                fruit.style.left = x + 'px';
+                fruit.style.bottom = '-60px';
+                
+                fruit.velocityY = -(Math.random() * 8 + 12);
+                fruit.velocityX = (Math.random() - 0.5) * 4;
+                fruit.sliced = false;
+                fruit.type = fruitType;
+                
+                this.gameContainer.appendChild(fruit);
+                this.fruits.push(fruit);
+            }
+
+            spawnBomb() {
+                const bomb = document.createElement('div');
+                bomb.className = 'fruit bomb';
+                bomb.style.left = Math.random() * (window.innerWidth - 60) + 'px';
+                bomb.style.bottom = '-60px';
+                
+                bomb.velocityY = -(Math.random() * 4 + 8);
+                bomb.velocityX = (Math.random() - 0.5) * 2;
+                bomb.sliced = false;
+                bomb.type = 'bomb';
+                bomb.isBomb = true;
+                
+                this.gameContainer.appendChild(bomb);
+                this.fruits.push(bomb);
+            }
+
+            sliceFruit(fruit, x, y, sliceDirection) {
+                if (fruit.sliced) return;
+                
+                fruit.sliced = true;
+                
+                if (fruit.isStartFruit) {
+                    fruit.classList.add('sliced');
+                    
+                    this.createSplashEffect(fruit, x, y);
+                    
+                    this.createStartFruitHalves(fruit, sliceDirection);
+                    
+                    setTimeout(() => {
+                        this.startGame();
+                    }, 800);
+                    
+                    return;
+                }
+                
+                if (fruit.isBomb) {
+                    this.resetStreak();
+                    this.explodeBomb(fruit, x, y);
+                    return;
+                }
+                
+                if (this.comboCount !== undefined) {
+                    this.comboCount++;
+                }
+                
+                this.streak++;
+                const basePoints = 10;
+                const streakBonus = Math.max(0, (this.streak - 1) * 5);
+                const totalPoints = basePoints + streakBonus;
+                
+                this.score += totalPoints;
+                this.updateScore();
+                this.updateStreak();
+                
+                if (streakBonus > 0) {
+                    this.showStreakBonus(x, y, streakBonus);
+                }
+                
+                fruit.classList.add('sliced');
+                
+                this.createSplashEffect(fruit, x, y);
+                
+                this.createFruitHalves(fruit, sliceDirection);
+                
+                setTimeout(() => {
+                    if (fruit.parentNode) {
+                        fruit.parentNode.removeChild(fruit);
+                    }
+                    this.fruits = this.fruits.filter(f => f !== fruit);
+                }, 500);
+
+                this.createSliceEffect(x, y);
+            }
+
+            createFruitHalves(fruit, sliceDirection) {
+                const rect = fruit.getBoundingClientRect();
+                const fruitType = fruit.type;
+                
+                const sliceAngle = Math.atan2(sliceDirection.y, sliceDirection.x) * 180 / Math.PI;
+                
+                const half1 = document.createElement('div');
+                half1.className = `fruit-half ${fruitType}`;
+                half1.style.left = rect.left + 'px';
+                half1.style.top = rect.top + 'px';
+                
+                const clipPath1 = this.createClipPathForSlice(sliceAngle, true);
+                half1.style.clipPath = clipPath1;
+                
+                const perpX = -sliceDirection.y;
+                const perpY = sliceDirection.x;
+                const force = 3;
+                
+                half1.velocityY = fruit.velocityY;
+                half1.velocityX = fruit.velocityX + (perpX * force);
+                
+                const half2 = document.createElement('div');
+                half2.className = `fruit-half ${fruitType}`;
+                half2.style.left = rect.left + 'px';
+                half2.style.top = rect.top + 'px';
+                
+                const clipPath2 = this.createClipPathForSlice(sliceAngle, false);
+                half2.style.clipPath = clipPath2;
+                
+                half2.velocityY = fruit.velocityY;
+                half2.velocityX = fruit.velocityX - (perpX * force);
+                
+                this.gameContainer.appendChild(half1);
+                this.gameContainer.appendChild(half2);
+                
+                this.animateFruitHalf(half1);
+                this.animateFruitHalf(half2);
+                
+                setTimeout(() => {
+                    if (half1.parentNode) half1.parentNode.removeChild(half1);
+                    if (half2.parentNode) half2.parentNode.removeChild(half2);
+                }, 2000);
+            }
+
+            createStartFruitHalves(fruit, sliceDirection) {
+                const rect = fruit.getBoundingClientRect();
+                const fruitType = fruit.type;
+                
+                const sliceAngle = Math.atan2(sliceDirection.y, sliceDirection.x) * 180 / Math.PI;
+                
+                const half1 = document.createElement('div');
+                half1.className = `fruit-half ${fruitType}`;
+                half1.style.position = 'absolute';
+                half1.style.left = rect.left + 'px';
+                half1.style.top = rect.top + 'px';
+                half1.style.zIndex = '2001';
+                
+                const clipPath1 = this.createClipPathForSlice(sliceAngle, true);
+                half1.style.clipPath = clipPath1;
+                
+                const perpX = -sliceDirection.y;
+                const perpY = sliceDirection.x;
+                const force = 3;
+                
+                half1.velocityY = -5;
+                half1.velocityX = perpX * force;
+                
+                const half2 = document.createElement('div');
+                half2.className = `fruit-half ${fruitType}`;
+                half2.style.position = 'absolute';
+                half2.style.left = rect.left + 'px';
+                half2.style.top = rect.top + 'px';
+                half2.style.zIndex = '2001';
+                
+                const clipPath2 = this.createClipPathForSlice(sliceAngle, false);
+                half2.style.clipPath = clipPath2;
+                
+                half2.velocityY = -5;
+                half2.velocityX = -perpX * force;
+                
+                document.body.appendChild(half1);
+                document.body.appendChild(half2);
+                
+                this.animateStartFruitHalf(half1);
+                this.animateStartFruitHalf(half2);
+                
+                setTimeout(() => {
+                    if (half1.parentNode) half1.parentNode.removeChild(half1);
+                    if (half2.parentNode) half2.parentNode.removeChild(half2);
+                }, 2000);
+            }
+
+            animateStartFruitHalf(half) {
+                const animate = () => {
+                    if (!half.parentNode) return;
+                    
+                    const currentTop = parseInt(half.style.top);
+                    const currentLeft = parseInt(half.style.left);
+                    
+                    half.velocityY += this.gravity;
+                    
+                    const newTop = currentTop + half.velocityY;
+                    const newLeft = currentLeft + half.velocityX;
+                    
+                    half.style.top = newTop + 'px';
+                    half.style.left = newLeft + 'px';
+                    
+                    if (newTop < window.innerHeight + 100) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+
+            createClipPathForSlice(sliceAngle, isFirstHalf) {
+                const angleRad = sliceAngle * Math.PI / 180;
+                
+                const sliceX = Math.cos(angleRad);
+                const sliceY = Math.sin(angleRad);
+                
+                const perpX = -sliceY;
+                const perpY = sliceX;
+                
+                const points = [];
+                const numPoints = 16;
+                
+                for (let i = 0; i <= numPoints; i++) {
+                    const t = (i / numPoints) * 2 * Math.PI;
+                    const circleX = 0.5 + 0.5 * Math.cos(t);
+                    const circleY = 0.5 + 0.5 * Math.sin(t);
+                    
+                    const relativeX = circleX - 0.5;
+                    const relativeY = circleY - 0.5;
+                    const dotProduct = relativeX * perpX + relativeY * perpY;
+                    
+                    if ((isFirstHalf && dotProduct >= 0) || (!isFirstHalf && dotProduct <= 0)) {
+                        points.push(`${(circleX * 100).toFixed(1)}% ${(circleY * 100).toFixed(1)}%`);
+                    }
+                }
+                
+                points.push('50% 50%');
+                
+                if (points.length < 3) {
+                    const intersections = this.getSliceLineIntersections(angleRad);
+                    intersections.forEach(point => {
+                        points.push(`${(point.x * 100).toFixed(1)}% ${(point.y * 100).toFixed(1)}%`);
+                    });
+                }
+                
+                return `polygon(${points.join(', ')})`;
+            }
+
+            getSliceLineIntersections(angleRad) {
+                const intersections = [];
+                
+                const cos = Math.cos(angleRad);
+                const sin = Math.sin(angleRad);
+                
+                intersections.push({
+                    x: 0.5 + 0.5 * cos,
+                    y: 0.5 + 0.5 * sin
+                });
+                
+                intersections.push({
+                    x: 0.5 - 0.5 * cos,
+                    y: 0.5 - 0.5 * sin
+                });
+                
+                return intersections;
+            }
+
+            animateFruitHalf(half) {
+                const animate = () => {
+                    if (!half.parentNode) return;
+                    
+                    const currentTop = parseInt(half.style.top);
+                    const currentLeft = parseInt(half.style.left);
+                    
+                    half.velocityY += this.gravity;
+                    
+                    const newTop = currentTop + half.velocityY;
+                    const newLeft = currentLeft + half.velocityX;
+                    
+                    half.style.top = newTop + 'px';
+                    half.style.left = newLeft + 'px';
+                    
+                    if (newTop < window.innerHeight + 100) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+
+            createSliceEffect(x, y) {
+                const effect = document.createElement('div');
+                effect.className = 'trail';
+                effect.style.left = x + 'px';
+                effect.style.top = y + 'px';
+                effect.style.background = '#ffff00';
+                effect.style.width = '6px';
+                effect.style.height = '6px';
+                
+                this.gameContainer.appendChild(effect);
+                
+                setTimeout(() => {
+                    if (effect.parentNode) {
+                        effect.parentNode.removeChild(effect);
+                    }
+                }, 500);
+            }
+
+            setupMouseControls() {
+                document.addEventListener('mousemove', (e) => {
+                    if (this.lastMouseX !== 0 && this.lastMouseY !== 0) {
+                        this.checkSliceCollisions(this.lastMouseX, this.lastMouseY, e.clientX, e.clientY);
+                        
+                        this.createContinuousLine(this.lastMouseX, this.lastMouseY, e.clientX, e.clientY);
+                    }
+                    
+                    this.lastMouseX = e.clientX;
+                    this.lastMouseY = e.clientY;
+                });
+
+                document.addEventListener('mouseenter', (e) => {
+                    this.lastMouseX = e.clientX;
+                    this.lastMouseY = e.clientY;
+                });
+            }
+
+            checkSliceCollisions(x1, y1, x2, y2) {
+                const sliceDx = x2 - x1;
+                const sliceDy = y2 - y1;
+                const sliceLength = Math.sqrt(sliceDx * sliceDx + sliceDy * sliceDy);
+                
+                const sliceDirection = sliceLength > 0 ? {
+                    x: sliceDx / sliceLength,
+                    y: sliceDy / sliceLength
+                } : { x: 1, y: 0 };
+                
+                if (!this.gameStarted && this.startFruit && !this.startFruit.sliced) {
+                    const rect = this.startFruit.getBoundingClientRect();
+                    const fruitCenterX = rect.left + rect.width / 2;
+                    const fruitCenterY = rect.top + rect.height / 2;
+                    const fruitRadius = rect.width / 2;
+                    
+                    if (this.lineCircleIntersection(x1, y1, x2, y2, fruitCenterX, fruitCenterY, fruitRadius)) {
+                        this.sliceFruit(this.startFruit, fruitCenterX, fruitCenterY, sliceDirection);
+                        return;
+                    }
+                }
+                
+                if (this.gameRunning) {
+                    this.fruits.forEach(fruit => {
+                        if (fruit.sliced) return;
+                        
+                        const rect = fruit.getBoundingClientRect();
+                        const fruitCenterX = rect.left + rect.width / 2;
+                        const fruitCenterY = rect.top + rect.height / 2;
+                        const fruitRadius = rect.width / 2;
+                        
+                        if (this.lineCircleIntersection(x1, y1, x2, y2, fruitCenterX, fruitCenterY, fruitRadius)) {
+                            this.sliceFruit(fruit, fruitCenterX, fruitCenterY, sliceDirection);
+                        }
+                    });
+                }
+            }
+
+            lineCircleIntersection(x1, y1, x2, y2, cx, cy, r) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const fx = x1 - cx;
+                const fy = y1 - cy;
+                
+                const a = dx * dx + dy * dy;
+                const b = 2 * (fx * dx + fy * dy);
+                const c = (fx * fx + fy * fy) - r * r;
+                
+                const discriminant = b * b - 4 * a * c;
+                
+                if (discriminant < 0) {
+                    return false;
+                }
+                
+                const discriminantSqrt = Math.sqrt(discriminant);
+                const t1 = (-b - discriminantSqrt) / (2 * a);
+                const t2 = (-b + discriminantSqrt) / (2 * a);
+                
+                return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
+            }
+
+            createContinuousLine(x1, y1, x2, y2) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                
+                if (length < 1) return;
+                
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                
+                const line = document.createElement('div');
+                line.className = 'trail';
+                line.style.width = (length + 2) + 'px';
+                line.style.height = '6px';
+                line.style.left = (x1 - 1) + 'px';
+                line.style.top = (y1 - 3) + 'px';
+                line.style.transform = `rotate(${angle}deg)`;
+                line.style.transformOrigin = '0 50%';
+                line.style.background = 'rgba(255, 255, 100, 0.9)';
+                
+                this.gameContainer.appendChild(line);
+                
+                setTimeout(() => {
+                    if (line.parentNode) {
+                        line.parentNode.removeChild(line);
+                    }
+                }, 400);
+            }
+
+            createTrailEffect(x, y) {
+                const trail = document.createElement('div');
+                trail.className = 'trail';
+                trail.style.left = x + 'px';
+                trail.style.top = y + 'px';
+                trail.style.width = '3px';
+                trail.style.height = '3px';
+                trail.style.background = 'rgba(255, 255, 255, 0.5)';
+                trail.style.borderRadius = '50%';
+                
+                this.gameContainer.appendChild(trail);
+                
+                setTimeout(() => {
+                    if (trail.parentNode) {
+                        trail.parentNode.removeChild(trail);
+                    }
+                }, 200);
+            }
+
+            gameLoop() {
+                if (!this.gameRunning && !this.gameEnding) return;
+                
+                this.fruits.forEach((fruit, index) => {
+                    if (fruit.sliced) return;
+                    
+                    const currentBottom = parseInt(fruit.style.bottom);
+                    const currentLeft = parseInt(fruit.style.left);
+                    
+                    fruit.velocityY += this.gravity;
+                    const newBottom = currentBottom - fruit.velocityY;
+                    const newLeft = currentLeft + fruit.velocityX;
+                    
+                    fruit.style.bottom = newBottom + 'px';
+                    fruit.style.left = newLeft + 'px';
+                    
+                    if (newBottom < -100) {
+                        if (fruit.parentNode) {
+                            fruit.parentNode.removeChild(fruit);
+                        }
+                        this.fruits.splice(index, 1);
+                        
+                        if (!fruit.isBomb && !fruit.sliced && this.gameRunning) {
+                            this.resetStreak();
+                        }
+                    }
+                    
+                    if (newLeft <= 0 || newLeft >= window.innerWidth - 60) {
+                        fruit.velocityX *= -0.8;
+                    }
+                });
+                
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            updateScore() {
+                this.scoreElement.textContent = `Score: ${this.score}`;
+            }
+
+            updateStreak() {
+                if (this.streak > this.maxStreak) {
+                    this.maxStreak = this.streak;
+                }
+                
+                if (this.streak > 1) {
+                    this.streakElement.textContent = `Streak: ${this.streak}x`;
+                    this.streakElement.classList.add('visible');
+                } else {
+                    this.streakElement.textContent = '';
+                    this.streakElement.classList.remove('visible');
+                }
+            }
+
+            resetStreak() {
+                if (this.streak > 1) {
+                    this.streakElement.style.color = '#ff6b6b';
+                    setTimeout(() => {
+                        this.streakElement.style.color = '#ffcb05';
+                    }, 300);
+                }
+                this.streak = 0;
+                this.updateStreak();
+            }
+
+            showStreakBonus(x, y, bonus) {
+                const bonusElement = document.createElement('div');
+                bonusElement.className = 'streak-bonus';
+                bonusElement.textContent = `+${bonus}`;
+                bonusElement.style.left = (x + 20) + 'px';
+                bonusElement.style.top = (y - 10) + 'px';
+                
+                this.gameContainer.appendChild(bonusElement);
+                
+                setTimeout(() => {
+                    if (bonusElement.parentNode) {
+                        bonusElement.parentNode.removeChild(bonusElement);
+                    }
+                }, 1000);
+            }
+
+            explodeBomb(bomb, x, y) {
+                const explosion = document.createElement('div');
+                explosion.className = 'explosion';
+                explosion.style.left = (x - 100) + 'px';
+                explosion.style.top = (y - 100) + 'px';
+                explosion.style.width = '200px';
+                explosion.style.height = '200px';
+                
+                this.gameContainer.appendChild(explosion);
+                
+                if (bomb.parentNode) {
+                    bomb.parentNode.removeChild(bomb);
+                }
+                this.fruits = this.fruits.filter(f => f !== bomb);
+                
+                const remainingFruits = this.fruits.filter(f => !f.isBomb && !f.sliced);
+                remainingFruits.forEach(fruit => {
+                    this.blowAwayFruit(fruit, x, y);
+                });
+                
+                setTimeout(() => {
+                    if (explosion.parentNode) {
+                        explosion.parentNode.removeChild(explosion);
+                    }
+                }, 800);
+            }
+
+            blowAwayFruit(fruit, explosionX, explosionY) {
+                const rect = fruit.getBoundingClientRect();
+                const fruitX = rect.left + rect.width / 2;
+                const fruitY = rect.top + rect.height / 2;
+                
+                const dx = fruitX - explosionX;
+                const dy = fruitY - explosionY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const force = 500;
+                const blowX = distance > 0 ? (dx / distance) * force : force;
+                const blowY = distance > 0 ? (dy / distance) * force : -force;
+                
+                fruit.style.setProperty('--blow-x', blowX + 'px');
+                fruit.style.setProperty('--blow-y', blowY + 'px');
+                
+                fruit.sliced = true;
+                fruit.classList.add('blown');
+                
+                setTimeout(() => {
+                    if (fruit.parentNode) {
+                        fruit.parentNode.removeChild(fruit);
+                    }
+                    this.fruits = this.fruits.filter(f => f !== fruit);
+                }, 1000);
+            }
+
+            createSplashEffect(fruit, x, y) {
+                const fruitType = fruit.type;
+                
+                const fruitColors = {
+                    apple: ['#ff6b6b', '#d63031', '#e17055'],
+                    orange: ['#fd79a8', '#e84393', '#ff7675'],
+                    banana: ['#fdcb6e', '#e17055', '#fab1a0'],
+                    watermelon: ['#00b894', '#00a085', '#55efc4']
+                };
+                
+                const colors = fruitColors[fruitType] || ['#ff6b6b', '#d63031', '#e17055'];
+                
+                const splash = document.createElement('div');
+                splash.className = 'splash';
+                splash.style.position = 'absolute';
+                splash.style.left = (x - 25) + 'px';
+                splash.style.top = (y - 25) + 'px';
+                splash.style.width = '50px';
+                splash.style.height = '50px';
+                splash.style.background = `radial-gradient(circle, ${colors[0]} 0%, ${colors[1]} 50%, transparent 100%)`;
+                splash.style.animation = 'splashFade 0.6s ease-out forwards';
+                splash.style.zIndex = fruit.isStartFruit ? '2002' : '15';
+                
+                const container = fruit.isStartFruit ? document.body : this.gameContainer;
+                container.appendChild(splash);
+                
+                const particleCount = 8;
+                for (let i = 0; i < particleCount; i++) {
+                    setTimeout(() => {
+                        this.createSplashParticle(x, y, colors[i % colors.length], fruit.isStartFruit);
+                    }, i * 20);
+                }
+                
+                setTimeout(() => {
+                    if (splash.parentNode) {
+                        splash.parentNode.removeChild(splash);
+                    }
+                }, 600);
+            }
+
+            createSplashParticle(centerX, centerY, color, isStartFruit = false) {
+                const particle = document.createElement('div');
+                particle.className = 'splash-particle';
+                particle.style.position = 'absolute';
+                
+                const angle = Math.random() * 2 * Math.PI;
+                const distance = Math.random() * 30 + 10;
+                const startX = centerX + Math.cos(angle) * distance;
+                const startY = centerY + Math.sin(angle) * distance;
+                
+                particle.style.left = startX + 'px';
+                particle.style.top = startY + 'px';
+                particle.style.background = color;
+                particle.style.zIndex = isStartFruit ? '2002' : '15';
+                
+                const moveDistance = Math.random() * 80 + 40;
+                const moveAngle = Math.random() * 2 * Math.PI;
+                const moveX = Math.cos(moveAngle) * moveDistance;
+                const moveY = Math.sin(moveAngle) * moveDistance;
+                
+                particle.style.setProperty('--particle-x', moveX + 'px');
+                particle.style.setProperty('--particle-y', moveY + 'px');
+                
+                particle.style.animation = 'particleSplash 0.8s ease-out forwards';
+                
+                const container = isStartFruit ? document.body : this.gameContainer;
+                container.appendChild(particle);
+                
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 800);
+            }
+
+            showStartScreen() {
+                this.startScreen.style.display = 'flex';
+                this.gameRunning = false;
+                this.gameStarted = false;
+                this.createStartFruit();
+                this.setupMouseControls();
+            }
+
+            createStartFruit() {
+                this.startFruitElement.innerHTML = '';
+                
+                const fruit = document.createElement('div');
+                const fruitType = this.fruitTypes[Math.floor(Math.random() * this.fruitTypes.length)];
+                
+                fruit.className = `fruit ${fruitType}`;
+                fruit.style.position = 'relative';
+                fruit.style.margin = '0 auto';
+                
+                fruit.sliced = false;
+                fruit.type = fruitType;
+                fruit.isStartFruit = true;
+                
+                this.startFruitElement.appendChild(fruit);
+                this.startFruit = fruit;
+            }
+
+            startGame() {
+                this.startScreen.style.display = 'none';
+                
+                this.gameRunning = true;
+                this.gameStarted = true;
+                this.gameEnding = false;
+                this.score = 0;
+                this.streak = 0;
+                this.maxStreak = 0;
+                this.fruits = [];
+                this.spawnRate = 1200;
+                this.maxFruits = 12;
+                this.groupSpawnChance = 0.4;
+                this.bombSpawnChance = 0.08;
+                this.lastSpawnTime = 0;
+                this.timeLeft = this.gameTime;
+                
+                this.updateScore();
+                this.updateStreak();
+                this.startTimer();
+                
+                this.init();
+            }
+
+            startTimer() {
+                this.timerElement.classList.add('visible');
+                this.updateTimer();
+                
+                this.timerInterval = setInterval(() => {
+                    this.timeLeft--;
+                    this.updateTimer();
+                    
+                    if (this.timeLeft <= 10 && this.timeLeft > 0) {
+                        this.timerElement.classList.add('warning');
+                    }
+                    
+                    if (this.timeLeft <= 0) {
+                        this.endGame();
+                    }
+                }, 1000);
+            }
+
+            updateTimer() {
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                this.timerElement.textContent = (minutes > 0 ? `${minutes}:`:"")+`${seconds.toString().padStart(2, '0')}`;
+            }
+
+            endGame() {
+                this.gameRunning = false;
+                this.gameEnding = true;
+                
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+                
+                if (this.spawnInterval) clearInterval(this.spawnInterval);
+                if (this.difficultyInterval) clearInterval(this.difficultyInterval);
+                
+                this.timerElement.classList.remove('visible');
+                this.timerElement.classList.remove('warning');
+                
+                this.waitForFruitsToFall();
+            }
+
+            waitForFruitsToFall() {
+                const activeFruits = this.fruits.filter(fruit => !fruit.sliced);
+                
+                if (activeFruits.length === 0) {
+                    this.showFinalScores();
+                } else {
+                    setTimeout(() => {
+                        this.waitForFruitsToFall();
+                    }, 100);
+                }
+            }
+
+            showFinalScores() {
+                this.scoreElement.classList.add('game-over');
+                this.streakElement.classList.add('game-over');
+                
+                this.streakElement.textContent = `Best Streak: ${this.maxStreak}x`;
+                this.streakElement.classList.add('visible');
+                
+                this.finalScoreElement.textContent = this.score;
+            }
+
+            restart() {
+                this.fruits.forEach(fruit => {
+                    if (fruit.parentNode) {
+                        fruit.parentNode.removeChild(fruit);
+                    }
+                });
+                
+                const trails = document.querySelectorAll('.trail, .fruit-half, .splash, .splash-particle, .streak-bonus');
+                trails.forEach(trail => {
+                    if (trail.parentNode) {
+                        trail.parentNode.removeChild(trail);
+                    }
+                });
+                
+                this.fruits = [];
+                this.score = 0;
+                this.streak = 0;
+                this.maxStreak = 0;
+                this.gameRunning = false;
+                this.gameStarted = false;
+                this.gameEnding = false;
+                this.spawnRate = 1200;
+                this.maxFruits = 12;
+                this.groupSpawnChance = 0.3;
+                this.bombSpawnChance = 0.08;
+                this.lastSpawnTime = 0;
+                this.timeLeft = this.gameTime;
+                
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+                
+                this.scoreElement.classList.remove('game-over');
+                this.streakElement.classList.remove('game-over', 'visible');
+                this.timerElement.classList.remove('visible', 'warning');
+                
+                this.updateScore();
+                this.updateStreak();
+                this.gameOverElement.style.display = 'none';
+                
+                if (this.spawnInterval) clearInterval(this.spawnInterval);
+                if (this.difficultyInterval) clearInterval(this.difficultyInterval);
+                
+                this.showStartScreen();
+            }
+
+            cleanup() {
+                if (this.swipeChannel) {
+                    this.swipeChannel.close();
+                }
+            }
+
+        }
+
+        let game;
+
+        window.addEventListener('load', () => {
+            game = new FruitNinja();
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (game) {
+                game.cleanup();
+            }
+        });
+
+        function restartGame() {
+            if (game) {
+                game.restart();
+            }
+        }
+
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>

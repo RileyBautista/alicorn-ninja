@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head><title>middleware</title>
+<style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #eee; }
+    canvas { display: block; }
+    p { font-family: monospace; }
+</style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <p id="pos"></p>
+    <p id="swipe"></p>
+    <button id="send" onclick="sendTest()">SEND</button>
+    <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let baseX = null;
+    let baseZ = null;
+    const threshold = 1.5;
+    let lastSwipe = "n/a";
+    let lastAngle = 0;
+    let lastSwipeTime = 0;
+    const swipeCooldown = 500;
+    const sectorSize = 1;
+    const bc = new BroadcastChannel("swipeChannel");
+    let consecutiveReadings = [];
+    const maxReadings = 5;
+    let isStabilizing = false;
+    let stabilizeStartTime = 0;
+    const stabilizeDuration = 300;
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - 70;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function draw(x, y) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'blue';
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const drawX = cx + x * 10 - 10;
+        const drawY = cy + y * 10 - 10;
+        ctx.fillRect(drawX, drawY, 20, 20);
+    }
+
+    function detectSwipe(x, y) {
+        const now = Date.now();
+        
+        if (baseX === null || baseZ === null) {
+            baseX = x;
+            baseZ = y;
+            return "base";
+        }
+
+        const diffX = x - baseX;
+        const diffY = y - baseZ;
+        
+        const distance = Math.sqrt(diffX * diffX + diffY * diffY);
+        
+        // consecutiveReadings.push({ x: diffX, y: diffY, distance: distance, time: now });
+        // if (consecutiveReadings.length > maxReadings) {
+        //     consecutiveReadings.shift();
+        // }
+        
+        const maxDistance = 5;
+        const intensity = Math.min(distance / maxDistance, 1);
+        
+        // if (isStabilizing && now - stabilizeStartTime < stabilizeDuration) {
+        //     baseX = baseX * 0.95 + x * 0.05;
+        //     baseZ = baseZ * 0.95 + y * 0.05;
+        //     return lastSwipe + " (stabilizing)";
+        // }
+        
+        if (distance > threshold) {
+            // let consistentDirection = true;
+            // if (consecutiveReadings.length >= 3) {
+            //     let angle = Math.atan2(diffY, diffX) * 180 / Math.PI;
+            //     if (angle < 0) angle += 360;
+                
+            //     for (let i = consecutiveReadings.length - 3; i < consecutiveReadings.length - 1; i++) {
+            //         let prevAngle = Math.atan2(-consecutiveReadings[i].y, consecutiveReadings[i].x) * 180 / Math.PI;
+            //         if (prevAngle < 0) prevAngle += 360;
+                    
+            //         let angleDiff = Math.abs(angle - prevAngle);
+            //         if (angleDiff > 180) angleDiff = 360 - angleDiff;
+                    
+            //         if (angleDiff > 90) {
+            //             consistentDirection = false;
+            //             break;
+            //         }
+            //     }
+            // }
+            
+            if (now - lastSwipeTime > swipeCooldown) {
+                let angle = Math.atan2(diffY, diffX) * 180 / Math.PI;
+                if (angle < 0) angle += 360;
+                
+                const sectorAngle = Math.round(angle / sectorSize) * sectorSize;
+                
+                lastAngle = sectorAngle;
+                lastSwipe = `${sectorAngle}° (dist: ${distance.toFixed(1)}, intensity: ${intensity.toFixed(2)})`;
+                lastSwipeTime = now;
+                console.log("SENT")
+                bc.postMessage({ angle: sectorAngle, intensity: intensity });
+                
+                isStabilizing = true;
+                stabilizeStartTime = now;
+                
+                baseX = x;
+                baseZ = y;
+            }
+            return lastSwipe;
+        } else {
+            isStabilizing = false;
+        }
+        
+        // baseX = baseX * 0.9 + x * 0.1;
+        // baseZ = baseZ * 0.9 + y * 0.1;
+        
+        return lastSwipe;
+    }
+
+    function sendTest() {
+        bc.postMessage({ angle: Math.random()*360, intensity: Math.random() });
+    }
+
+    async function update() {
+        try {
+            const res = await fetch('http://172.31.33.132/pos');
+            const data = await res.json();
+            draw(data.x, data.z);
+            
+            const swipeDirection = detectSwipe(data.x, data.z);
+            
+            document.getElementById("pos").innerHTML = "x: " + (data.x-baseX) + " y: " + data.y + " z: " + (data.z-baseZ);
+            document.getElementById("swipe").innerHTML = "angle: " + swipeDirection;
+        } catch (err) {
+            console.error('failed to fetch position:', err);
+        }
+    }
+
+    setInterval(update, 100);
+</script>
+</body>
+</html>
