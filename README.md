@@ -15,3 +15,4 @@ Check out our demo video: https://www.youtube.com/watch?v=N4qx0hz2pU4!
 \*PICTURE OF HEADMOUONT HERE\*
 ![alt text](GH-Images/schematic.png)
 ![alt text](GH-Images/site.png)
+![IMG_7122](https://github.com/user-attachments/assets/e2f4e200-84fc-4bb5-b35b-4aebb15413f2)
